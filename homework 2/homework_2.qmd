@@ -1,0 +1,117 @@
+---
+title: "Statistical explorations, data preparation, and correlations"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+library(labelled)
+library(rvest)
+```
+
+## Data Preparation
+
+```{r}
+# Import data
+hw2_data <- read_sav("11002_2022_9626_MOESM1_ESM.sav") |> 
+  mutate(
+    across(everything(), ~ na_if(., 99))
+  ) |> 
+  mutate(
+    time_music_last_week = Q6ax1_1 + Q6ax2_1 / 60,
+    Q19_avg = rowMeans(across(starts_with("Q19_1_")), na.rm = TRUE)
+  )
+
+# Data of time spend on music and rating
+time_rating_data <- hw2_data |> 
+  select(time_music_last_week, Q19_avg) |> 
+  rename(rating_avg = Q19_avg) |> 
+  drop_na()
+
+# Data of age and song_age
+age_data <- hw2_data |> 
+  select(Q1, starts_with("Q19_1_")) |> 
+  rename(birth_year = Q1) |> 
+  pivot_longer(
+    cols = starts_with("Q19_1_"),
+    names_to = "release",
+    values_to = "rating"
+  ) |> 
+  mutate(
+    release = as.numeric(gsub("Q19_1_", "", release)) * 2 + 1948,
+    song_age = release - birth_year
+  )
+
+# Data of song_age vs rating average
+age_rating_data <- age_data |> 
+  select(song_age, rating) |> 
+  group_by(song_age) |> 
+  summarise(
+    rating_avg = mean(rating, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+  drop_na()
+
+# Make a table of variable names and labels
+variable_names <- names(hw2_data)
+variable_labels <- sapply(hw2_data, var_label)
+variable_table <- tibble(
+  variable = variable_names,
+  label = variable_labels
+)
+```
+
+```{r}
+# Read the webpage
+url <- "https://link.springer.com/article/10.1007/s11002-022-09626-7/tables/2"
+webpage <- read_html(url)
+
+# Extract the table
+music_table <- webpage |>
+  html_node("table") |> 
+  html_table() |> 
+  rename(
+    song_year = 'Song Year',
+    song_title = 'Song Title',
+    performers = 'Performer/s'
+  )
+print(music_table)
+```
+
+## Analysis
+
+### Time spend on music vs. rating
+
+```{r}
+time_rating_data |> 
+  ggplot(aes(x = time_music_last_week, y = rating_avg)) + 
+  geom_point(
+    alpha = .4
+  ) + 
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x
+  ) + 
+  theme_minimal()
+```
+
+## Song age vs. rating average
+
+```{r}
+age_rating_data |> 
+  ggplot(aes(x = song_age, rating_avg)) + 
+  geom_point() + 
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x
+  ) + 
+  theme_minimal()
+```
+
+```{r}
+cor.test(x = age_rating_data$song_age, y = age_rating_data$rating_avg, method = "pearson")
+```
