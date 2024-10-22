@@ -1,5 +1,10 @@
 ---
 title: "Statistical explorations, data preparation, and correlations"
+author: 
+  - Andri Setiyawan
+  - Benedikt Meyer
+  - Niri Gala
+  - Yosep Dwi Kristanto
 format: pdf
 editor: visual
 editor_options: 
@@ -7,15 +12,54 @@ editor_options:
 ---
 
 ```{r}
+#| message: false
 library(tidyverse)
 library(haven)
 library(labelled)
 library(rvest)
+library(knitr)
+library(kableExtra)
 ```
 
-## Data Preparation
+What is your favorite song? How old is the song relative to your year of birth? Do you think others might have similar answers to the latter question?
+
+Through this report, we will present the results of our investigation into the relationship between the age of a song and its average rating. The age of the song we refer to is the difference between the release year of a song and the year of birth of the person listening to that song. The dataset we used is provided by [a study](https://doi.org/10.1007/s11002-022-09626-7) published in [*Marketing Letters*](https://link.springer.com/journal/11002).
+
+The study surveyed 1,036 residents of the US aged between 18 and 84 years. They were asked to listen to and rate 34 songs. All the songs were selected from the Billboard Top 10 charts from 1950 to 2016. @tbl-music-table presents the list of songs.
 
 ```{r}
+#| label: tbl-music-table
+#| tbl-cap: "Music stimuli used in the survey and their respective year in the Billboard charts"
+
+# Read the webpage
+url <- "https://link.springer.com/article/10.1007/s11002-022-09626-7/tables/2"
+webpage <- read_html(url)
+
+# Extract the table
+music_table <- webpage |>
+  html_node("table") |> 
+  html_table() |> 
+  rename(
+    song_year = 'Song Year',
+    song_title = 'Song Title',
+    performers = 'Performer/s'
+  )
+music_table |> 
+  kbl() |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed")
+  )
+```
+
+## Data preparation {#sec-data-preparation}
+
+The dataset we used initially had 74 variables. We added two variables, `time_music_last_week` and `rating_avg`, using the existing variables. A summary of the 76 variables formed is presented in @tbl-variable-table.
+
+```{r}
+#| label: tbl-variable-table
+#| tbl-cap: "Summary of variables and their labels"
+
 # Import data
 hw2_data <- read_sav("11002_2022_9626_MOESM1_ESM.sav") |> 
   mutate(
@@ -26,11 +70,47 @@ hw2_data <- read_sav("11002_2022_9626_MOESM1_ESM.sav") |>
     Q19_avg = rowMeans(across(starts_with("Q19_1_")), na.rm = TRUE)
   )
 
+# Make a table of variable names and labels
+variable_names <- names(hw2_data)
+variable_labels <- sapply(hw2_data, var_label)
+variable_table <- tibble(
+  variable = variable_names,
+  label = variable_labels
+)
+variable_table |> 
+  kbl() |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed")
+  )
+```
+
+We processed the dataset to produce two sets of data. The first data, `time_rating_data`, contains information on how long respondents listened to their chosen songs (`time_music_last_week`) and their average ratings (`rating_avg`). This data will later be used to conduct a correlation analysis between `time_music_last_week` and `rating_avg`. A summary of the first data set is presented in the @tbl-time-rating-data.
+
+```{r}
+#| label: tbl-time-rating-data
+#| tbl-cap: "Respondent listening time and tatings data"
+
 # Data of time spend on music and rating
 time_rating_data <- hw2_data |> 
   select(time_music_last_week, Q19_avg) |> 
   rename(rating_avg = Q19_avg) |> 
   drop_na()
+
+time_rating_data |> 
+  kbl() |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed")
+  )
+
+```
+
+The second data is `age_rating_data`. This data contains information on the age of the song (`song_age`) and its average rating (`rating_avg`). We will use this data to investigate the relationship between `song_age` and `rating_avg`. @tbl-age-rating-data shows the data.
+
+```{r}
+#| label: tbl-age-rating-data
+#| tbl-cap: "Song age and average ratings"
 
 # Data of age and song_age
 age_data <- hw2_data |> 
@@ -56,37 +136,27 @@ age_rating_data <- age_data |>
   ) |> 
   drop_na()
 
-# Make a table of variable names and labels
-variable_names <- names(hw2_data)
-variable_labels <- sapply(hw2_data, var_label)
-variable_table <- tibble(
-  variable = variable_names,
-  label = variable_labels
-)
-```
-
-```{r}
-# Read the webpage
-url <- "https://link.springer.com/article/10.1007/s11002-022-09626-7/tables/2"
-webpage <- read_html(url)
-
-# Extract the table
-music_table <- webpage |>
-  html_node("table") |> 
-  html_table() |> 
-  rename(
-    song_year = 'Song Year',
-    song_title = 'Song Title',
-    performers = 'Performer/s'
+age_rating_data |> 
+  kbl() |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed")
   )
-print(music_table)
 ```
 
-## Analysis
+## Analysis {#sec-analysis}
+
+In @sec-analysis, we will report our analysis results on the relationship between the duration of listening to chosen music and its ratings, as well as the relationship between the age of the song and its average ratings.
 
 ### Time spend on music vs. rating
 
+The relationship between the duration of listening to chosen music and the average ratings given can be observed using a scatter plot. @fig-plot-time-rating-data presents this scatter plot.
+
 ```{r}
+#| label: fig-plot-time-rating-data
+#| fig-cap: "Scatter plot of listening duration vs. average ratings"
+#| fig-asp: 0.5625
+
 time_rating_data |> 
   ggplot(aes(x = time_music_last_week, y = rating_avg)) + 
   geom_point(
@@ -99,9 +169,27 @@ time_rating_data |>
   theme_minimal()
 ```
 
-## Song age vs. rating average
+To determine whether there is a correlation between the duration of listening to songs and the average ratings, a correlation hypothesis test needs to be conducted. The results are as follows.
 
 ```{r}
+cor_test_1 <- cor.test(
+  x = time_rating_data$time_music_last_week,
+  y = time_rating_data$rating_avg,
+  method = "pearson"
+)
+print(cor_test_1)
+```
+
+Since we obtained a relatively large p-value, namely `r cor_test_1$p.value`, we can conclude that there is not enough evidence to suggest a correlation.
+
+### Song age vs. rating average
+
+Is there a relationship between the age of the song and its average rating? To observe this, first, please take a look at @fig-age-rating-data.
+
+```{r}
+#| label: fig-age-rating-data
+#| fig-cap: "Scatter plot of song age vs. average ratings"
+
 age_rating_data |> 
   ggplot(aes(x = song_age, rating_avg)) + 
   geom_point() + 
@@ -112,6 +200,69 @@ age_rating_data |>
   theme_minimal()
 ```
 
+To determine whether there is a correlation between the age of the song and its average rating, we need to conduct a correlation hypothesis test. Here are the results.
+
 ```{r}
-cor.test(x = age_rating_data$song_age, y = age_rating_data$rating_avg, method = "pearson")
+cor.test(
+  x = age_rating_data$song_age,
+  y = age_rating_data$rating_avg,
+  method = "pearson"
+)
 ```
+
+Since we obtained a very small p-value, there is enough evidence from the sample data to suggest that a correlation exists.
+
+Is the correlation hypothesis test conducted appropriate? We performed a Pearson correlation hypothesis test on a non-linear relationship. This does not meet the assumptions of the hypothesis test. Therefore, we will analyze it further in the next section.
+
+### Song-age vs. rating average (revisited)
+
+Although the data is not linear, we can split the data into two parts, resulting in two sections with a linear relationship. This division uses a song age threshold of 16.66 years. See @fig-age-rating-data-group.
+
+```{r}
+#| label: fig-age-rating-data-group
+#| fig-cap: "Scatter plot of song age vs. average ratings in grouped data"
+#| fig-asp: 0.5625
+
+age_rating_data_1 <- age_rating_data |> 
+  filter(song_age <= 16.66)
+age_rating_data_2 <- age_rating_data |> 
+  filter(song_age > 16.66)
+age_rating_data_group <- age_rating_data |> 
+  mutate(
+    group = if_else(song_age <= 16.66, "lower", "upper")
+  )
+age_rating_data_group |> 
+  ggplot(aes(x = song_age, y = rating_avg, color = group)) + 
+  geom_point() + 
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x
+  ) + 
+  theme_minimal()
+```
+
+The results of the correlation hypothesis test for the first group are as follows. This test shows a significant correlation.
+
+```{r}
+cor.test(
+  x = age_rating_data_1$song_age,
+  y = age_rating_data_1$rating_avg,
+  method = "pearson"
+)
+```
+
+The second group also yields a significant correlation.
+
+```{r}
+cor.test(
+  x = age_rating_data_2$song_age,
+  y = age_rating_data_2$rating_avg,
+  method = "pearson"
+)
+```
+
+## Key takeaways
+
+We have conducted a correlation analysis on data related to music preferences. First, we found that there is not enough evidence from our sample data to suggest a correlation between the duration of listening to music and its average ratings.
+
+Second, we found sufficient evidence to conclude that there is a correlation between the age of the song and its average rating. Furthermore, we showed that a song age of 16.66 years is associated with the highest average rating. This means that, generally, a person tends to prefer hit songs released around 17 years after their birth.
