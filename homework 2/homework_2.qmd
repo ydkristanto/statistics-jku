@@ -7,6 +7,8 @@ author:
   - Yosep Dwi Kristanto
 format: pdf
 editor: visual
+execute: 
+  echo: false
 editor_options: 
   chunk_output_type: console
 ---
@@ -180,7 +182,7 @@ cor_test_1 <- cor.test(
 print(cor_test_1)
 ```
 
-Since we obtained a relatively large p-value, namely `r cor_test_1$p.value`, we can conclude that there is not enough evidence to suggest a correlation.
+Since we obtained a relatively small p-value, namely `r cor_test_1$p.value`, that less than .05. Therefore, we can conclude that there is enough evidence to suggest a correlation. However, the effect size is small, i.e. `r cor_test_1$estimate^2`.
 
 ### Song age vs. rating average
 

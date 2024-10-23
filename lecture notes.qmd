@@ -1,0 +1,69 @@
+---
+title: "Course Notes"
+author: "Yosep Dwi Kristanto"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+```
+
+```{r}
+cars_data <- read_sav("Cars.sav")
+record_sales <- read_sav("Record-sales-2 (1).sav")
+record_sales <- record_sales |> 
+  mutate(
+    adverts_sqrt = sqrt(ADVERTS)
+  )
+employees <- read_sav("Employees imported.sav")
+
+```
+
+```{r}
+record_sales |> 
+  ggplot(aes(x = adverts_sqrt)) + 
+  geom_histogram()
+record_sales |> 
+  ggplot(aes(x = ADVERTS, y = SALES)) + 
+  geom_point() + 
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x
+  ) + 
+  theme_minimal()
+employees |> 
+  filter(jobcat != 2) |> 
+  ggplot(aes(x = salary)) + 
+  geom_histogram(
+    aes(y = after_stat(density)),
+    color = "white"
+  ) + 
+  geom_density() + 
+  facet_grid(gender ~ jobcat) + 
+  theme_minimal()
+```
+
+```{r}
+record_sales_cor <- cor.test(
+  x = record_sales$ADVERTS,
+  y = record_sales$SALES,
+  method = "pearson"
+)
+record_sales_cor$estimate^2
+
+employees |> 
+  group_by(gender) |> 
+  summarise(
+    salary_avg = mean(salary, na.rm = TRUE),
+    salary_sd = sd(salary, na.rm = TRUE)
+  )
+employees |> 
+  group_by(gender, jobcat) |> 
+  summarise(
+    n = n()
+  )
+```

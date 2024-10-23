@@ -1,0 +1,163 @@
+---
+title: "Bivariate statistics chi-square"
+author: 
+  - Andri Setiyawan
+  - Benedikt Meyer
+  - Niri Gala
+  - Yosep Dwi Kristanto
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(haven)
+library(janitor)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+```
+
+::: callout-note
+## Problem
+
+A researcher was interested in whether animals could be trained to line-dance. He took 200 cats and tried to train them to line-dance by giving them either food or affection as a reward for dance-like behaviour. At the end of the week he counted how many animals could line-dance and how many could not. There are two categorical variables here: training (the animal was trained using either food or affection, not both) and dance (the animal either learnt to line-dance or it did not). By combining categories, we end up with four different categories.
+
+Open the SPSS file “Cats.sav” to work on the following questions.
+
+1.  Count the frequencies how many cats fall into each category and create a contingency table!
+
+2.  Which question could be investigated? Write down a null hypothesis and alternative hypothesis.
+
+3.  What test can we use to investigate whether there’s a relationship between these categorical variables (i.e., does the number of cats that line-dance relate to the type of training used?)? Check the assumptions and then conduct an appropriate test.
+:::
+
+## Question
+
+Is there a relationship between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance (yes or no)?
+
+## Hypotheses
+
+$H_0$: There is no relationship between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance (yes or no).
+
+$H_1$: There is a relationship between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance (yes or no).
+
+## Contingency table
+
+```{r}
+#| label: tbl-obs-freq
+#| tbl-cap: "The observed frequencies for the cats experiment"
+
+cats_data <- read_sav("Cats.sav") |> 
+  mutate(
+    training = as_factor(Training),
+    dance = as_factor(Dance)
+  ) |> 
+  select(training, dance)
+contingency_table <- cats_data |> 
+  count(training, dance) |> 
+  pivot_wider(
+    names_from = dance,
+    values_from = n
+  ) |> 
+  adorn_totals(
+    where = c("row", "col")
+  )
+contingency_table |> 
+  kbl(
+    linesep = "",
+    booktabs = TRUE,
+    col.names = c("Training", "(Dance?) No", "(Dance?) Yes", "Total")
+  ) |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed"),
+     latex_options = c("striped", "hold_position")
+  )
+```
+
+## Expected frequencies table
+
+```{r}
+#| label: tbl-exp-freq
+#| tbl-cap: "The expected frequencies for the cats experiment"
+
+chisq_cats <- chisq.test(
+  cats_data$training,
+  cats_data$dance
+)
+exp_freq_table <- chisq_cats$expected |> 
+  as.table() |> 
+  as_tibble() |> 
+  rename(
+    training = "cats_data$training",
+    dance = "cats_data$dance"
+  ) |> 
+  pivot_wider(
+    names_from = dance,
+    values_from = n
+  ) |> 
+  adorn_totals(where = c("row", "col"))
+exp_freq_table |> kbl(
+    linesep = "",
+    booktabs = TRUE,
+    col.names = c("Training", "(Dance?) No", "(Dance?) Yes", "Total")
+  ) |> 
+  kable_styling(
+    full_width = TRUE,
+    bootstrap_options = c("striped", "condensed"),
+     latex_options = c("striped", "hold_position")
+  )
+```
+
+## Assumption checking
+
+-   The data has two categorical variables, i.e. `training` (Food as Reward or Affection as Reward) and `dance` (Yes or No).
+
+-   All the categories are mutually exclusive.
+
+-   As shown in @tbl-exp-freq, all expected frequencies are greater than or equal to 5, meeting the assumptions that (a) all expected frequencies must be greater than 1, and (b) no more than 20% of the cells in the contingency table should have an expected frequency less than 5.
+
+## Calculating the $\chi^2$ statistics
+
+```{r}
+chisq_cats$statistic
+```
+
+## Testing the significance of $\chi^2$
+
+```{r}
+chisq_cats$parameter
+```
+
+```{r}
+ggplot(data.frame(x = c(0, 30)), aes(x = x)) +
+  stat_function(fun = dchisq, args = list(df = 1)) + 
+  geom_vline(
+    xintercept = as.numeric(chisq_cats$statistic),
+    linetype = "dashed"
+  )
+```
+
+```{r}
+chisq_cats$p.value
+```
+
+## Interpreting $\chi^2$
+
+From the chi-square test, we get $\chi^2$ ≈ `r chisq_cats$statistic` and p-value ≈ `r chisq_cats$p.value`. Since the p-value is less than .05, we reject the null hypothesis.
+
+## Effect size
+
+```{r}
+Phi(cats_data$training, cats_data$dance)
+CramerV(cats_data$training, cats_data$dance)
+```
+
+## Reporting the findings
+
+A chi-square test of independence showed that there was a significant association between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance, $\chi^2\left( 1, N=200 \right)$ = `r chisq_cats$statistic`, p = `r chisq_cats$p.value`. The effect size is moderate, i.e. `r CramerV(cats_data$training, cats_data$dance)`.
