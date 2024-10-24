@@ -223,7 +223,7 @@ ggplot(data.frame(x = c(0, 30)), aes(x = x)) +
 
 ## Interpreting $\chi^2$
 
-From the chi-square test, we get $\chi^2$ ≈ `r chisq_cats$statistic` and p-value ≈ `r chisq_cats$p.value`. Since the p-value is less than .05, we reject the null hypothesis.
+From the chi-square test, we get $\chi^2$ = `r chisq_cats$statistic` and p-value = `r chisq_cats$p.value`. Since the p-value is less than .05, we reject the null hypothesis.
 
 ## Effect size
 
