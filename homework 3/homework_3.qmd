@@ -22,7 +22,7 @@ library(kableExtra)
 library(DescTools)
 ```
 
-::: callout-note
+::: {.callout-note icon="false"}
 ## Problem
 
 A researcher was interested in whether animals could be trained to line-dance. He took 200 cats and tried to train them to line-dance by giving them either food or affection as a reward for dance-like behaviour. At the end of the week he counted how many animals could line-dance and how many could not. There are two categorical variables here: training (the animal was trained using either food or affection, not both) and dance (the animal either learnt to line-dance or it did not). By combining categories, we end up with four different categories.
@@ -48,16 +48,21 @@ $H_1$: There is a relationship between the type of training (using food as a rew
 
 ## Contingency table
 
+Based on the dataset from Cats.sav, we created a contingency table, as shown in @tbl-obs-freq.
+
 ```{r}
 #| label: tbl-obs-freq
 #| tbl-cap: "The observed frequencies for the cats experiment"
 
+# Import the data
 cats_data <- read_sav("Cats.sav") |> 
   mutate(
     training = as_factor(Training),
     dance = as_factor(Dance)
   ) |> 
   select(training, dance)
+
+# Make a contingency table
 contingency_table <- cats_data |> 
   count(training, dance) |> 
   pivot_wider(
@@ -82,10 +87,13 @@ contingency_table |>
 
 ## Expected frequencies table
 
+@tbl-exp-freq presents the expected frequencies based on the observed frequencies from @tbl-obs-freq.
+
 ```{r}
 #| label: tbl-exp-freq
 #| tbl-cap: "The expected frequencies for the cats experiment"
 
+# Make a table for expected frequencies
 chisq_cats <- chisq.test(
   cats_data$training,
   cats_data$dance
@@ -125,25 +133,48 @@ exp_freq_table |> kbl(
 ## Calculating the $\chi^2$ statistics
 
 ```{r}
+# Calculate chi-squared statistics
 chisq_cats$statistic
 ```
 
 ## Testing the significance of $\chi^2$
 
 ```{r}
+# Show the degree of freedom
 chisq_cats$parameter
 ```
 
 ```{r}
+#| label: fig-chi-square-dist
+#| fig-cap: Visualization of the p-value for $\chi^2 = 23.52$ when $df = 1$
+
+# Make chi-squared distribution
 ggplot(data.frame(x = c(0, 30)), aes(x = x)) +
   stat_function(fun = dchisq, args = list(df = 1)) + 
+  stat_function(
+    fun = dchisq,
+    args = list(df = 1),
+    color = "blue",
+    xlim = c(23.52, 30), 
+    linewidth = 1
+  ) + 
   geom_vline(
     xintercept = as.numeric(chisq_cats$statistic),
-    linetype = "dashed"
+    linetype = "dashed",
+    color = "blue"
+  ) + 
+  theme_minimal() + 
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank()
+  ) + 
+  labs(
+    x = "Chi-squared"
   )
 ```
 
 ```{r}
+# Calculate the p-value
 chisq_cats$p.value
 ```
 
@@ -154,10 +185,15 @@ From the chi-square test, we get $\chi^2$ ≈ `r chisq_cats$statistic` and p-val
 ## Effect size
 
 ```{r}
+# Calculate Phi and Cramer's V
 Phi(cats_data$training, cats_data$dance)
 CramerV(cats_data$training, cats_data$dance)
+
+# Calculate odds ratio manually
+odds_ratio <- (28 / 10) / (48 / 114)
+print(odds_ratio)
 ```
 
 ## Reporting the findings
 
-A chi-square test of independence showed that there was a significant association between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance, $\chi^2\left( 1, N=200 \right)$ = `r chisq_cats$statistic`, p = `r chisq_cats$p.value`. The effect size is moderate, i.e. `r CramerV(cats_data$training, cats_data$dance)`.
+A chi-square test of independence showed that there was a significant association between the type of training (using food as a reward or affection as a reward) and the cats' ability to dance, $\chi^2\left( 1, N=200 \right)$ = `r chisq_cats$statistic`, p = `r chisq_cats$p.value`. The effect size is moderate, i.e. `r CramerV(cats_data$training, cats_data$dance)`. The odds ratio indicates that cats were seven times more likely to be successfully trained to dance when rewarded with food rather than affection.
