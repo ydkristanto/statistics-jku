@@ -1,0 +1,427 @@
+---
+title: "Bivariate statistics t-test"
+author: 
+  - Andri Setiyawan
+  - Benedikt Meyer
+  - Niri Gala
+  - Yosep Dwi Kristanto
+format: pdf
+editor: visual
+execute: 
+  echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(haven)
+library(ggpubr)
+library(ggtext)
+```
+
+::: {.callout-note icon="false"}
+## Problem
+
+Use the data file `SPSS_Gapminder_main_1.sav`
+
+Run $t$-tests correctly and check assumptions carefully.
+
+1.  Test the life expectancy for the population in all countries and compare male and female scores.
+
+2.  Compare the life expectancy of males and females in OECD, G77, and Other countries separately.
+
+Use the data file `Pollution.sav`
+
+*Assume that you are an environmental lobbyist interested in assessing whether the introduction of a new waste removal system at a large chemical factory has had an impact on groundwater contamination levels at 12 test sites in the area. You compare contamination levels from the same 12 locations based on samples collected one month before, and one month after the system was introduced.*
+
+1.  Run the appropriate $t$-test for `pollute_before` and `pollute_after` as your variables of interest
+
+2.  Was there a significant difference between the average groundwater contamination levels measured before and after the waste removal system was installed? Run appropriate $t$-test
+:::
+
+## Male and Female Life Expectancy Across Countries
+
+### Data Exploration
+
+@tbl-life-exp-all-summary presents summary statistics for male and female life expectancy across countries in 2000 and 2010, while @fig-life-exp-gender-year illustrates the distribution of male and female life expectancy across countries for these years.
+
+```{r}
+gapminder_data_ori <- read_sav("SPSS_Gapminder_main_1 (1).sav")
+gapminder_data <- gapminder_data_ori |> 
+  select(
+    country, OECD_G77, LE00, LE10, LEf00, LEf10, LEm00, LEm10
+  ) |> 
+  pivot_longer(
+    cols = c(LEf00, LEf10, LEm00, LEm10),
+    names_to = "ori_vars",
+    values_to = "life_exp"
+  ) |> 
+  mutate(
+    gender = ifelse(grepl("LEf", ori_vars), "Female", "Male"),
+    year = ifelse(grepl("00", ori_vars), 2000, 2010)
+  ) |> 
+  select(-ori_vars)
+gapminder_data_fm <- gapminder_data_ori |> 
+  select(
+    country, OECD_G77, LE00, LE10, LEf00, LEf10, LEm00, LEm10
+  ) |> 
+  mutate(
+    diff_00 = LEm00 - LEf00,
+    diff_10 = LEm10 - LEf10
+  ) |> 
+  pivot_longer(
+    cols = c(diff_00, diff_10),
+    names_to = "year",
+    values_to = "life_exp_diff"
+  ) |> 
+  mutate(
+    year = ifelse(
+      grepl("00", year), 2000, 2010
+    )
+  )
+```
+
+```{r}
+#| label: tbl-life-exp-all-summary
+#| tbl-cap: Summary statistics for male and female life expectancy across countries in 2000 and 2010
+
+gapminder_life_exp_all_summary <- gapminder_data |> 
+  group_by(year, gender) |> 
+  summarise(
+    mean = mean(life_exp, na.rm = TRUE),
+    sd = sd(life_exp, na.rm = TRUE),
+    .groups = "drop"
+  )
+gapminder_life_exp_all_summary |> 
+  kbl(
+    col.names = c("Year", "Gender", "M", "SD")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    latex_options = c("striped")
+  )
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| label: fig-life-exp-gender-year
+#| fig-cap: Comparison of male and female life expectancy across countries for the years 2000 and 2010
+#| fig-asp: 0.5625
+
+ggpaired(
+  gapminder_data, x = "gender", y = "life_exp",
+  color = "gender", line.color = "gray", line.size = .1,
+  alpha = .1
+) + 
+  scale_color_viridis_d(name = "Gender", option = "D") + 
+  facet_wrap(vars(year)) + 
+  theme_minimal() + 
+  theme(
+    legend.position = "bottom",
+    axis.title.x = element_blank()
+  ) + 
+  labs(
+    y = "Life Expectancy"
+  )
+```
+
+### Hypotheses
+
+#### 2000
+
+$H_0$: There is no difference in life expectancy between males and females across countries in 2000.
+
+$H_1$: There is a difference in life expectancy between males and females across countries in 2000.
+
+#### 2010
+
+$H_0$: There is no difference in life expectancy between males and females across countries in 2010.
+
+$H_1$: There is a difference in life expectancy between males and females across countries in 2010.
+
+### Assumption Checking
+
+-   Since the variable life expectancy is a ratio variable, the first assumption is met.
+
+-   The grouping variable is dichotomous, categorized as male and female.
+
+-   The distribution of the differences in life expectancy between males and females across countries in 2000 and 2010 is presented in @fig-dist-fm-across-countries.
+
+    ```{r}
+    #| label: fig-dist-fm-across-countries
+    #| fig-cap: Distribution of differences in life expectancy between males and females across countries in 2000 and 2010
+    #| fig-asp: 0.5625
+    #| warning: false
+
+    gapminder_data_fm |> 
+      ggplot(aes(x = life_exp_diff)) + 
+      geom_histogram(
+        binwidth = 1,
+        color = "white",
+        fill = "grey"
+      ) + 
+      facet_wrap(vars(year)) + 
+      geom_line(
+        aes(y = 184 * dnorm(
+          life_exp_diff,
+          mean = tapply(life_exp_diff, year, mean, na.rm = TRUE)[PANEL],
+          sd = tapply(life_exp_diff, year, sd, na.rm = TRUE)[PANEL]
+        ),
+        color = factor(year)),
+        linewidth = 1,
+        show.legend = FALSE
+      ) + 
+      scale_color_viridis_d() + 
+      theme_minimal() + 
+      labs(
+        x = "Difference in Life Expectancy",
+        y = "Count"
+      )
+
+    ```
+
+    @fig-qqplot-fm-across-countries presents QQ plots illustrating the distribution of life expectancy differences between males and females across countries for the years 2000 and 2010.
+
+    ```{r}
+    #| label: fig-qqplot-fm-across-countries
+    #| fig-cap: QQ plots displaying the distribution of differences in life expectancy between males and females across countries for the years 2000 and 2010
+    #| fig-asp: 0.5625
+    #| warning: false
+
+    gapminder_data_fm |> 
+      mutate(year = factor(year)) |> 
+      ggqqplot(
+      x = "life_exp_diff",
+      color = "year"
+    ) + 
+      facet_wrap(vars(year)) + 
+      scale_color_viridis_d() + 
+      scale_fill_viridis_d() + 
+      theme_minimal() + 
+      theme(
+        legend.position = "none"
+      )
+    ```
+
+    Based on @fig-qqplot-fm-across-countries, the differences in life expectancy between males and females in both 2000 and 2010 do not align well with a normal distribution. This suggests that the assumption of normality for the life expectancy differences across these years may not hold.
+
+    ```{r}
+    shapiro00_life_exp <- shapiro.test(
+      gapminder_data_fm$life_exp_diff[gapminder_data_fm$year == 2000]
+    )
+    print(shapiro00_life_exp)
+
+    shapiro10_life_exp <- shapiro.test(
+      gapminder_data_fm$life_exp_diff[gapminder_data_fm$year == 2010]
+    )
+    print(shapiro10_life_exp)
+    ```
+
+    To confirm the graphical findings, we conducted a Shapiro–Wilk test of normality for life expectancy differences in 2000 and 2010. The test yielded p-values of `r shapiro00_life_exp$p.value` for 2000 and `r shapiro10_life_exp$p.value` for 2010, both below .05, indicating the differences are unlikely to be from a normally distributed population.
+
+    Although the life expectancy differences for both years cannot be assumed to come from a normally distributed population, the sample size (184 for each year) is large. Based on the Central Limit Theorem, we can still proceed with a $t$-test.
+
+### Calculate the $t$ Statistics
+
+Paired $t$-tests were conducted to compare male and female life expectancy across countries. The $t$-statistics, degrees of freedom (df), and p-values for each test are presented below.
+
+```{r}
+t_test00 <- t.test(
+  gapminder_data_fm$LEm00,
+  gapminder_data_fm$LEf00,
+  paired = TRUE
+)
+print(t_test00)
+
+t_test10 <- t.test(
+  gapminder_data_fm$LEm10,
+  gapminder_data_fm$LEf10,
+  paired = TRUE
+)
+print(t_test10)
+
+```
+
+### Testing for the Significance of $t$
+
+Based on the results of the paired $t$-test for the 2000 data, we obtained a p-value of less than 2.2e-16 (see @fig-t-dist-life-exp-all-1). This indicates that, assuming the null hypothesis is true, the probability of obtaining a sample like that in `SPSS_Gapminder_main_1 (1).sav` is less than $2.2 \cdot 10^{-16}$.
+
+Similarly, for the paired $t$-test for the 2010 data, the p-value was also less than 2.2e-16 (see @fig-t-dist-life-exp-all-2). This suggests that, assuming the null hypothesis is true, the probability of obtaining a sample like that in `SPSS_Gapminder_main_1 (1).sav` is less than $2.2 \cdot 10^{-16}$.
+
+```{r}
+#| label: fig-t-dist-life-exp-all
+#| fig-cap: "Theoretical $t$-distribution with 367 degrees of freedom"
+#| fig-subcap: 
+#|  - "Tail area representing p-value from paired t-test for 2000 data"
+#|  - "Tail area representing p-value from paired t-test for 2010 data"
+#| fig-asp: .3
+
+ggplot(data.frame(
+  x = c(-45, 5)),
+  aes(x = x)
+) + 
+  stat_function(
+    fun = dt,
+    args = list(df = 367),
+    linewidth = 1
+  ) + 
+  stat_function(
+    fun = dt,
+    args = list(df = 367),
+    xlim = c(-45, as.numeric(t_test00$statistic)),
+    linewidth = 1.5,
+    color = "blue"
+  ) + 
+  geom_textbox(
+    x = -40,
+    y = .15,
+    label = "Tail area is too small to see",
+    maxwidth = .2
+  ) + 
+  scale_x_continuous(
+    breaks = c(
+      round(as.numeric(t_test00$statistic), 2),
+      -30, -20, -10, 0
+    )
+  ) + 
+  labs(
+    x = "t value",
+    y = "Density"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_textbox_simple()
+  )
+
+ggplot(data.frame(
+  x = c(-45, 5)),
+  aes(x = x)
+) + 
+  stat_function(
+    fun = dt,
+    args = list(df = 367),
+    linewidth = 1
+  ) + 
+  stat_function(
+    fun = dt,
+    args = list(df = 367),
+    xlim = c(-45, as.numeric(t_test10$statistic)),
+    linewidth = 1.5,
+    color = "blue"
+  ) + 
+  geom_textbox(
+    x = -40,
+    y = .15,
+    label = "Tail area is too small to see",
+    maxwidth = .2
+  ) + 
+  scale_x_continuous(
+    breaks = c(
+      round(as.numeric(t_test10$statistic), 2),
+      -30, -20, -10, 0
+    )
+  ) + 
+  labs(
+    x = "t value",
+    y = "Density"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_textbox_simple()
+  )
+```
+
+### Interpreting $t$
+
+From the paired $t$-test for the 2000 data, we obtained $t$ = `r as.numeric(t_test00$statistic)` and a p-value less than 2.2e-16. Since the p-value is smaller than .05, we reject the null hypothesis.
+
+Similarly, for the 2010 data, the paired $t$-test yielded $t$ = `r as.numeric(t_test10$statistic)` and a p-value less than 2.2e-16. As the p-value is also smaller than .05, we reject the null hypothesis.
+
+### Effect Size
+
+We computed the effect size of the paired $t$-test using Pearson's r and Cohen's d. @tbl-effect-size-life-exp-all presents the values of r and d for both the 2000 and 2010 data.
+
+```{r}
+#| echo: true
+
+# Calculating r and d for 2000 data
+r_life_exp_all00 <- sqrt(
+  as.numeric(t_test00$statistic)^2 / (as.numeric(t_test00$statistic)^2 + as.numeric(t_test00$parameter))
+)
+d_life_exp_all00 <- 2 * as.numeric(t_test00$statistic) / sqrt(as.numeric(t_test00$parameter))
+
+# Calculating r and d for 2010 data
+r_life_exp_all10 <- sqrt(
+  as.numeric(t_test10$statistic)^2 / (as.numeric(t_test10$statistic)^2 + as.numeric(t_test10$parameter))
+)
+d_life_exp_all10 <- 2 * as.numeric(t_test10$statistic) / sqrt(as.numeric(t_test10$parameter))
+```
+
+| Effect Size | 2000                 | 2010                 |
+|-------------|----------------------|----------------------|
+| Pearson's r | `r r_life_exp_all00` | `r r_life_exp_all10` |
+| Cohen's d   | `r d_life_exp_all00` | `r d_life_exp_all10` |
+
+: Effect size for 2000 and 2010 data {#tbl-effect-size-life-exp-all}
+
+### Report the Findings
+
+The results of the paired $t$-test for the 2000 data revealed a significant difference in life expectancy between males (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`) and females (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`), t(`r as.numeric(t_test00$parameter)`) = `r as.numeric(t_test00$statistic) |> round(2)`, p \< .001. The effect size was large, with Pearson's r = `r r_life_exp_all00 |> round(2)` and Cohen's d = `r d_life_exp_all00 |> round(2)`, according to Cohen’s (1988) guidelines.
+
+Similarly, the paired $t$-test for the 2010 data showed a significant difference in life expectancy between males (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`) and females (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`), t(`r as.numeric(t_test10$parameter)`) = `r as.numeric(t_test10$statistic) |> round(2)`, p \< .001. The effect size was also large, with Pearson's r = `r r_life_exp_all10 |> round(2)` and Cohen's d = `r d_life_exp_all10 |> round(2)`, indicating a stronger effect in 2010 compared to 2000.
+
+## Male and Female Life Expectancy in OECD, G77, and Other Countries
+
+### Data Exploration
+
+@tbl-life-exp-grouped-summary provides summary statistics for male and female life expectancy in OECD, G77, and other countries for 2000 and 2010. The table indicates a substantial difference in life expectancy between males and females across each country group (OECD, G77, and others) in both 2000 and 2010. To determine whether this difference is systematic, we will conduct a $t$-test.
+
+```{r}
+#| label: tbl-life-exp-grouped-summary
+#| tbl-cap: "Summary statistics of male and female life expectancy in OECD, G77, and other countries for 2000 and 2010"
+
+gapminder_grouped_summary <- gapminder_data |> 
+  select(-LE00, -LE10) |> 
+  drop_na() |> 
+  group_by(OECD_G77, year, gender) |> 
+  summarise(
+    n = n(),
+    mean = mean(life_exp, na.rm = TRUE),
+    sd = sd(life_exp, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+  mutate(
+    OECD_G77 = ifelse(
+      OECD_G77 == 1, "OECD",
+      ifelse(
+        OECD_G77 == 2, "G77", "others"
+      )
+    )
+  )
+gapminder_grouped_summary |> 
+  kbl(
+    col.names = c("Group", "Year", "Gender", "n", "M", "SD")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("condensed", "striped"),
+    latex_options = c("striped")
+  )
+```
+
+### Assumption Checking
+
+### Calculate the $t$ Statistics
+
+### Testing for Significance of $t$
+
+### Interpreting $t$
+
+### Effect Size
+
+### Report the Findings
