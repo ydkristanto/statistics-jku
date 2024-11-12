@@ -1,5 +1,7 @@
 ---
 title: "Bivariate statistics t-test"
+date: 2024-11-12
+date-format: long
 author: 
   - Andri Setiyawan
   - Benedikt Meyer
@@ -22,6 +24,8 @@ library(knitr)
 library(kableExtra)
 library(haven)
 library(ggpubr)
+library(coin)
+library(rstatix)
 library(ggtext)
 library(purrr)
 ```
@@ -113,19 +117,53 @@ gapminder_life_exp_all_summary |>
 #| message: false
 #| warning: false
 #| label: fig-life-exp-gender-year
-#| fig-cap: Comparison of male and female life expectancy across countries for the years 2000 and 2010
-#| fig-asp: 0.5625
+#| fig-cap: "Comparison of male and female life expectancy across countries"
+#| fig-subcap: 
+#|   - "2000 data"
+#|   - "2010 data"
+#| fig-asp: 1
+#| layout-ncol: 2
 
-ggpaired(
-  gapminder_data, x = "gender", y = "life_exp",
-  color = "gender", line.color = "gray", line.size = .1,
-  alpha = .1
+gapminder_data_fm |> 
+  rename(
+    Male = LEm00,
+    Female = LEf00
+  ) |> 
+  ggpaired(
+  cond1 = "Male",
+  cond2 = "Female",
+  color = "condition",
+  line.color = "gray",
+  line.size = .05
 ) + 
+  scale_y_continuous(limits = c(30, 90)) + 
   scale_color_viridis_d(name = "Gender", option = "D") + 
-  facet_wrap(vars(year)) + 
   theme_minimal() + 
   theme(
-    legend.position = "bottom",
+    legend.position = "none",
+    axis.title.x = element_blank()
+  ) + 
+  labs(
+    y = "Life Expectancy"
+  )
+
+gapminder_data_fm |> 
+  rename(
+    Male = LEm10,
+    Female = LEf10
+  ) |> 
+  ggpaired(
+  cond1 = "Male",
+  cond2 = "Female",
+  color = "condition",
+  line.color = "gray",
+  line.size = .05
+) + 
+  scale_y_continuous(limits = c(30, 90)) + 
+  scale_color_viridis_d(name = "Gender", option = "D") + 
+  theme_minimal() + 
+  theme(
+    legend.position = "none",
     axis.title.x = element_blank()
   ) + 
   labs(
@@ -599,108 +637,101 @@ $H_1$: There is a difference between the groundwater contamination levels measur
 
 ## Assumption Checking
 
--   Since the variable `pollute_before` and `pollute_after` is a ratio variable, the first assumption is met.
+Since the variable `pollute_before` and `pollute_after` is a ratio variable, the first assumption is met.
 
--   The grouping variable is dichotomous, categorized as before and after.
+The grouping variable is dichotomous, categorized as before and after.
 
--   The figure shows the distribution of differences in groundwater contamination levels before and after.
+@fig-dist-diff-pollute-1 shows the distribution of differences in groundwater contamination levels before and after.
 
-    ```{r}
-    #| label: fig-dist-diff-pollute
-    #| fig-cap: "Distribution of groundwater contamination level differences before and after intervention"
-    #| fig-asp: 0.5625
+@fig-dist-diff-pollute-2 shows Q-Q plot of groundwater contamination level differences before and after intervention.
 
-    pollution_data |> 
-      ggplot(aes(x = pollute_diff)) + 
-      geom_histogram(
-        binwidth = 1.5,
-        color = "white",
-        fill = "gray"
-      ) + 
-      stat_function(
-        fun = function(x) 12 * 1.5 * dnorm(
-          x,
-          mean = mean(pollution_data$pollute_diff),
-          sd = sd(pollution_data$pollute_diff)
-        ),
-        linewidth = 1
-      ) + 
-      theme_minimal() + 
-      labs(
-        x = "Differences in groundwater contamination levels",
-        y = "Count"
-      )
-    ```
+```{r}
+#| label: fig-dist-diff-pollute
+#| fig-cap: "Assessing the normality"
+#| fig-subcap: 
+#|   - "Histogram"
+#|   - "Q-Q plot"
+#| fig-asp: 1
+#| layout-ncol: 2
 
-    @fig-qqplot-pollute-diff shows Q-Q plot of groundwater contamination level differences before and after intervention.
+pollution_data |> 
+  ggplot(aes(x = pollute_diff)) + 
+  geom_histogram(
+    binwidth = 1.5,
+    color = "white",
+    fill = "gray"
+  ) + 
+  stat_function(
+    fun = function(x) 12 * 1.5 * dnorm(
+      x,
+      mean = mean(pollution_data$pollute_diff),
+      sd = sd(pollution_data$pollute_diff)
+    ),
+    linewidth = 1
+  ) + 
+  theme_minimal() + 
+  labs(
+    x = "Differences in groundwater contamination levels",
+    y = "Count"
+  )
 
-    ```{r}
-    #| label: fig-qqplot-pollute-diff
-    #| fig-cap: "Q-Q plot of groundwater contamination level differences before and after intervention"
-    #| fig-asp: 0.5625
+pollution_data |> 
+  ggqqplot(
+    x = "pollute_diff"
+  ) + 
+  theme_minimal()
+```
 
-    pollution_data |> 
-      ggqqplot(
-        x = "pollute_diff"
-      ) + 
-      theme_minimal()
-    ```
+Based on the Q-Q plot in @fig-dist-diff-pollute-2, it is unlikely that the sample comes from a normally distributed population. This observation is further supported by the following Shapiro-Wilk test, which yielded a p-value of .04927, less than the .05 threshold. Therefore, we reject the assumption that the sample is from a normally distributed population.
 
-    Based on the Q-Q plot in @fig-qqplot-pollute-diff, it is unlikely that the sample comes from a normally distributed population. This observation is further supported by the following Shapiro-Wilk test, which yielded a p-value of .04927, less than the .05 threshold. Therefore, we reject the assumption that the sample is from a normally distributed population.
+```{r}
+shapiro.test(pollution_data$pollute_diff)
+```
 
-    ```{r}
-    shapiro.test(pollution_data$pollute_diff)
-    ```
-
-    Since the sample does not come from a normally distributed population, one of the assumptions for conducting a $t$-test is not met. Therefore, we will use the alternative, the Wilcoxon signed-rank test.
+Since the sample does not come from a normally distributed population, one of the assumptions for conducting a $t$-test is not met. Therefore, we will use the alternative, the Wilcoxon signed-rank test.
 
 ## Calculate the Test Statistics
+
+The results of the Wilcoxon signed-rank test are shown below.
 
 ```{r}
 #| warning: false
 
-wilcox.test(
-  x = pollution_data$pollute_before,
-  y = pollution_data$pollute_after,
-  paired = TRUE,
-  alternative = c("two.sided"),
-  mu = 0
-)
+pollute_wilcox_test <- pollution_longer |> 
+  wilcox_test(
+    formula = pollute ~ time,
+    paired = TRUE,
+    alternative = "two.sided"
+  )
+print(pollute_wilcox_test)
 ```
+
+The test yielded a test statistic of V = `r as.numeric(pollute_wilcox_test$statistic)`.
 
 ## Testing for the Significance of the Test Statistics
 
-The p-value is 0.002201, which indicates that the probability of obtaining this sample, assuming the null hypothesis is true, is very small.
+The p-value is `r as.numeric(pollute_wilcox_test$p)`, which indicates that the probability of obtaining this sample, assuming the null hypothesis is true, is very small.
 
 ## Interpreting the Test Statistics
 
-Since the p-value of 0.002201 is smaller than 0.05, we reject the null hypothesis.
+Since the p-value of `r as.numeric(pollute_wilcox_test$p)` is smaller than .05, we reject the null hypothesis.
 
 ## Effect Size
 
 ```{r}
 #| echo: true
 
-t_test_pollute <- t.test(
-  x = pollution_data$pollute_before,
-  y = pollution_data$pollute_after,
-  paired = TRUE
-)
-t_pollute <- t_test_pollute$statistic |> 
-  as.numeric()
-df_pollute <- t_test_pollute$parameter |> 
-  as.numeric()
-r_pollute <- sqrt(
-  t_pollute^2 / (t_pollute^2 + df_pollute)
-)
-d_pollute <- 2 * t_pollute / sqrt(df_pollute)
-
-print(r_pollute)
-print(d_pollute)
+pollute_wilcox_effsize <- pollution_longer |> 
+  wilcox_effsize(
+    formula = pollute ~ time,
+    paired = TRUE,
+    alternative = "two.sided"
+  )
+print(pollute_wilcox_effsize)
 ```
 
-We obtained Pearson's r = .92 and Cohen's d = 4.55.
+The effect size obtained was r = `r as.numeric(pollute_wilcox_effsize$effsize)`.
 
 ## Reporting the Findings
 
-A Wilcoxon signed-rank test was conducted to determine if there was a difference in groundwater contamination levels before and after the installation of the waste removal system. The results indicated a significant difference, V = 78, p = .002201, suggesting that the contamination levels were different after the system was installed. The effect size was large, with Pearson's r = .92 and Cohen's d = 4.55, indicating a large difference between the before and after measurements.
+A Wilcoxon signed-rank test was conducted to determine if there was a difference in groundwater contamination levels before and after the installation of the waste removal system. The results indicated a significant difference, V = `r as.numeric(pollute_wilcox_test$statistic)`, p = `r as.numeric(pollute_wilcox_test$p)`, suggesting that the contamination levels were different after the system was installed. The effect size was large, with r = `r as.numeric(pollute_wilcox_effsize$effsize)`, indicating a large difference between the before and after measurements.
