@@ -7,6 +7,7 @@ author:
   - Yosep Dwi Kristanto
 format: pdf
 editor: visual
+number-sections: true
 execute: 
   echo: false
 editor_options: 
@@ -22,6 +23,7 @@ library(kableExtra)
 library(haven)
 library(ggpubr)
 library(ggtext)
+library(purrr)
 ```
 
 ::: {.callout-note icon="false"}
@@ -44,9 +46,9 @@ Use the data file `Pollution.sav`
 2.  Was there a significant difference between the average groundwater contamination levels measured before and after the waste removal system was installed? Run appropriate $t$-test
 :::
 
-## Male and Female Life Expectancy Across Countries
+# Male and Female Life Expectancy Across Countries
 
-### Data Exploration
+## Data Exploration
 
 @tbl-life-exp-all-summary presents summary statistics for male and female life expectancy across countries in 2000 and 2010, while @fig-life-exp-gender-year illustrates the distribution of male and female life expectancy across countries for these years.
 
@@ -131,21 +133,21 @@ ggpaired(
   )
 ```
 
-### Hypotheses
+## Hypotheses
 
-#### 2000
+### 2000
 
 $H_0$: There is no difference in life expectancy between males and females across countries in 2000.
 
 $H_1$: There is a difference in life expectancy between males and females across countries in 2000.
 
-#### 2010
+### 2010
 
 $H_0$: There is no difference in life expectancy between males and females across countries in 2010.
 
 $H_1$: There is a difference in life expectancy between males and females across countries in 2010.
 
-### Assumption Checking
+## Assumption Checking
 
 -   Since the variable life expectancy is a ratio variable, the first assumption is met.
 
@@ -227,7 +229,7 @@ $H_1$: There is a difference in life expectancy between males and females across
 
     Although the life expectancy differences for both years cannot be assumed to come from a normally distributed population, the sample size (184 for each year) is large. Based on the Central Limit Theorem, we can still proceed with a $t$-test.
 
-### Calculate the $t$ Statistics
+## Calculate the $t$ Statistics
 
 Paired $t$-tests were conducted to compare male and female life expectancy across countries. The $t$-statistics, degrees of freedom (df), and p-values for each test are presented below.
 
@@ -248,7 +250,7 @@ print(t_test10)
 
 ```
 
-### Testing for the Significance of $t$
+## Testing for the Significance of $t$
 
 Based on the results of the paired $t$-test for the 2000 data, we obtained a p-value of less than 2.2e-16 (see @fig-t-dist-life-exp-all-1). This indicates that, assuming the null hypothesis is true, the probability of obtaining a sample like that in `SPSS_Gapminder_main_1 (1).sav` is less than $2.2 \cdot 10^{-16}$.
 
@@ -337,13 +339,13 @@ ggplot(data.frame(
   )
 ```
 
-### Interpreting $t$
+## Interpreting $t$
 
 From the paired $t$-test for the 2000 data, we obtained $t$ = `r as.numeric(t_test00$statistic)` and a p-value less than 2.2e-16. Since the p-value is smaller than .05, we reject the null hypothesis.
 
 Similarly, for the 2010 data, the paired $t$-test yielded $t$ = `r as.numeric(t_test10$statistic)` and a p-value less than 2.2e-16. As the p-value is also smaller than .05, we reject the null hypothesis.
 
-### Effect Size
+## Effect Size
 
 We computed the effect size of the paired $t$-test using Pearson's r and Cohen's d. @tbl-effect-size-life-exp-all presents the values of r and d for both the 2000 and 2010 data.
 
@@ -370,15 +372,15 @@ d_life_exp_all10 <- 2 * as.numeric(t_test10$statistic) / sqrt(as.numeric(t_test1
 
 : Effect size for 2000 and 2010 data {#tbl-effect-size-life-exp-all}
 
-### Report the Findings
+## Report the Findings
 
 The results of the paired $t$-test for the 2000 data revealed a significant difference in life expectancy between males (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`) and females (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2000 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`), t(`r as.numeric(t_test00$parameter)`) = `r as.numeric(t_test00$statistic) |> round(2)`, p \< .001. The effect size was large, with Pearson's r = `r r_life_exp_all00 |> round(2)` and Cohen's d = `r d_life_exp_all00 |> round(2)`, according to Cohen’s (1988) guidelines.
 
 Similarly, the paired $t$-test for the 2010 data showed a significant difference in life expectancy between males (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Male"] |> round(2)`) and females (M = `r gapminder_life_exp_all_summary$mean[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`, SD = `r gapminder_life_exp_all_summary$sd[gapminder_life_exp_all_summary$year == 2010 & gapminder_life_exp_all_summary$gender == "Female"] |> round(2)`), t(`r as.numeric(t_test10$parameter)`) = `r as.numeric(t_test10$statistic) |> round(2)`, p \< .001. The effect size was also large, with Pearson's r = `r r_life_exp_all10 |> round(2)` and Cohen's d = `r d_life_exp_all10 |> round(2)`, indicating a stronger effect in 2010 compared to 2000.
 
-## Male and Female Life Expectancy in OECD, G77, and Other Countries
+# Male and Female Life Expectancy in OECD, G77, and Other Countries
 
-### Data Exploration
+## Data Exploration
 
 @tbl-life-exp-grouped-summary provides summary statistics for male and female life expectancy in OECD, G77, and other countries for 2000 and 2010. The table indicates a substantial difference in life expectancy between males and females across each country group (OECD, G77, and others) in both 2000 and 2010. To determine whether this difference is systematic, we will conduct a $t$-test.
 
@@ -414,14 +416,291 @@ gapminder_grouped_summary |>
   )
 ```
 
-### Assumption Checking
+## Assumption Checking
 
-### Calculate the $t$ Statistics
+All assumptions for conducting a $t$-test are satisfied: (a) the outcome variables, male and female life expectancy, are ratio-level; (b) the grouping variable, gender, is dichotomous (male and female); and (c) each group has a sufficiently large sample size (31 for OECD, 127 for G77, and 26 for other countries).
 
-### Testing for Significance of $t$
+For the group with the smallest sample size (i.e., "others"), we can assume it is drawn from a normally distributed population. The Shapiro-Wilk test of normality for this group for both 2000 and 2010 data is as follows.
 
-### Interpreting $t$
+```{r}
+shapiro.test(
+  gapminder_data_fm$life_exp_diff[gapminder_data_fm$year == 2000 & gapminder_data_fm$OECD_G77 == 3]
+)
 
-### Effect Size
+shapiro.test(
+  gapminder_data_fm$life_exp_diff[gapminder_data_fm$year == 2010 & gapminder_data_fm$OECD_G77 == 3]
+)
+```
 
-### Report the Findings
+Since the p-values for both tests are greater than .05, we fail to reject the assumption that the samples come from a normally distributed population.
+
+## Calculate the $t$ Statistics
+
+@tbl-t-test-result presents the $t$-statistics from paired $t$-tests for OECD, G77, and other countries in 2000 and 2010.
+
+```{r}
+#| label: tbl-t-test-result
+#| tbl-cap: "Paired t-test results for life expectancy differences between males and females"
+
+grouped_t_test <- gapminder_data |> 
+  pivot_wider(
+    names_from = gender,
+    values_from = life_exp
+  ) |> 
+  rename(
+    life_exp_f = Female,
+    life_exp_m = Male
+  ) |> 
+  drop_na() |> 
+  group_by(OECD_G77, year) |> 
+  summarise(
+    t_test = list(
+      t.test(life_exp_m, life_exp_f, paired = TRUE)
+    ),
+    .groups = "drop"
+  ) |> 
+  mutate(
+    OECD_G77 = ifelse(
+      OECD_G77 == 1, "OECD",
+      ifelse(OECD_G77 == 2, "G77", "others")
+    ),
+    df = map_dbl(t_test, ~ .x$parameter),
+    t_statistic = map_dbl(t_test, ~ .x$statistic),
+    p_value = map_dbl(t_test, ~ .x$p.value)
+  ) |> 
+  select(OECD_G77, year, df, t_statistic, p_value)
+
+grouped_t_test |> 
+  mutate(
+    p_value = as.character(signif(p_value, 3))
+  ) |> 
+  kbl(
+    col.names = c("Group", "Year", "df",
+                  "t", "p")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    latex_options = c("striped")
+  )
+```
+
+## Testing for Significance of $t$
+
+All the p-values in the table are less than 0.05, indicating that, assuming the null hypothesis is true, the probability of obtaining a sample like ours is very small (less than 5%).
+
+## Interpreting $t$
+
+Since the p-values are less than 0.05, we reject the null hypothesis. There is sufficient evidence to support the claim that male and female life expectancy differs across OECD, G77, and other countries in both 2000 and 2010.
+
+## Effect Size
+
+@tbl-t-test-effect-size shows effect sizes (Pearson's r and Cohen's d) for differences in male and female life expectancy across OECD, G77, and other countries for the years 2000 and 2010.
+
+```{r}
+#| label: tbl-t-test-effect-size
+#| tbl-cap: "Effect sizes (Pearson's r and Cohen's d) for differences in male and female life expectancy across OECD, G77, and other countries in 2000 and 2010"
+
+grouped_t_test |> 
+  mutate(
+    p_value = as.character(signif(p_value, 3)),
+    r = sqrt(t_statistic^2 / (t_statistic^2 + df)),
+    d = 2 * t_statistic / sqrt(df)
+  ) |> 
+  kbl(
+    col.names = c("Group", "Year", "df",
+                  "t", "p",
+                  "Pearson's r", "Cohen's d")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    latex_options = c("striped")
+  )
+```
+
+## Report the Findings
+
+The paired $t$-tests for male and female life expectancy across OECD, G77, and other countries in 2000 and 2010 revealed significant differences in each group. For OECD countries, life expectancy differences in 2000 (t(30) = -27.6, p \< .001, r = .98, d = -10.1) and 2010 (t(30) = -23.0, p \< .001, r = .97, d = -8.4) showed large effect sizes. Similarly, in G77 countries, 2000 (t(126) = -22.3, p \< .001, r = .89, d = -3.98) and 2010 (t(126) = -24.2, p \< .001, r = .91, d = -4.31) indicated large effects. For other countries, 2000 (t(25) = -13.7, p \< .001, r = .94, d = -5.48) and 2010 (t(25) = -13.6, p \< .001, r = .94, d = -5.43) also showed large effect sizes.
+
+# Groundwater Contamination Level
+
+## Data Exploration
+
+```{r}
+pollution_data <- read_sav("Pollution.sav")
+pollution_data <- pollution_data |> 
+  mutate(
+    pollute_diff = pollute_after - pollute_before
+  )
+pollution_longer <- pollution_data |> 
+  select(-pollute_diff) |> 
+  pivot_longer(
+    cols = c(pollute_before, pollute_after),
+    names_to = "time",
+    values_to = "pollute"
+  ) |> 
+  mutate(
+    time = ifelse(
+      time == "pollute_before", "before", "after"
+    )
+  )
+```
+
+@tbl-summary-stat-pollution presents the summary statistics of groundwater contamination levels before and after the installation of the waste removal system.
+
+```{r}
+#| label: tbl-summary-stat-pollution
+#| tbl-cap: "Summary statistics of groundwater contamination levels before and after the waste removal system installation"
+
+pollution_longer |> 
+  group_by(time) |> 
+  summarise(
+    n = n(),
+    mean = mean(pollute, na.rm = TRUE),
+    sd = sd(pollute, na.rm = TRUE)
+  ) |> 
+  kbl(
+    col.names = c("Time", "n", "M", "SD")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    latex_options = c("striped")
+  )
+```
+
+@fig-dist-before-after-pollute displays the distribution of groundwater contamination levels before and after the installation of the waste removal system.
+
+```{r}
+#| label: fig-dist-before-after-pollute
+#| fig-cap: "Distribution of groundwater contamination levels before and after the waste removal system installation"
+#| fig-asp: 0.5625
+
+ggpaired(
+  pollution_data,
+  cond1 = "pollute_before", cond2 = "pollute_after",
+  line.color = "gray",
+  color = "condition"
+) + 
+  scale_colour_viridis_d() + 
+  theme_minimal() + 
+  theme(
+    legend.position = "none"
+  ) + 
+  labs(
+    x = "Condition",
+    y = "Groundwater contamination levels"
+  )
+```
+
+## Hypotheses
+
+$H_0$: There is no difference between the groundwater contamination levels measured before and after the waste removal system was installed.
+
+$H_1$: There is a difference between the groundwater contamination levels measured before and after the waste removal system was installed.
+
+## Assumption Checking
+
+-   Since the variable `pollute_before` and `pollute_after` is a ratio variable, the first assumption is met.
+
+-   The grouping variable is dichotomous, categorized as before and after.
+
+-   The figure shows the distribution of differences in groundwater contamination levels before and after.
+
+    ```{r}
+    #| label: fig-dist-diff-pollute
+    #| fig-cap: "Distribution of groundwater contamination level differences before and after intervention"
+    #| fig-asp: 0.5625
+
+    pollution_data |> 
+      ggplot(aes(x = pollute_diff)) + 
+      geom_histogram(
+        binwidth = 1.5,
+        color = "white",
+        fill = "gray"
+      ) + 
+      stat_function(
+        fun = function(x) 12 * 1.5 * dnorm(
+          x,
+          mean = mean(pollution_data$pollute_diff),
+          sd = sd(pollution_data$pollute_diff)
+        ),
+        linewidth = 1
+      ) + 
+      theme_minimal() + 
+      labs(
+        x = "Differences in groundwater contamination levels",
+        y = "Count"
+      )
+    ```
+
+    @fig-qqplot-pollute-diff shows Q-Q plot of groundwater contamination level differences before and after intervention.
+
+    ```{r}
+    #| label: fig-qqplot-pollute-diff
+    #| fig-cap: "Q-Q plot of groundwater contamination level differences before and after intervention"
+    #| fig-asp: 0.5625
+
+    pollution_data |> 
+      ggqqplot(
+        x = "pollute_diff"
+      ) + 
+      theme_minimal()
+    ```
+
+    Based on the Q-Q plot in @fig-qqplot-pollute-diff, it is unlikely that the sample comes from a normally distributed population. This observation is further supported by the following Shapiro-Wilk test, which yielded a p-value of .04927, less than the .05 threshold. Therefore, we reject the assumption that the sample is from a normally distributed population.
+
+    ```{r}
+    shapiro.test(pollution_data$pollute_diff)
+    ```
+
+    Since the sample does not come from a normally distributed population, one of the assumptions for conducting a $t$-test is not met. Therefore, we will use the alternative, the Wilcoxon signed-rank test.
+
+## Calculate the Test Statistics
+
+```{r}
+#| warning: false
+
+wilcox.test(
+  x = pollution_data$pollute_before,
+  y = pollution_data$pollute_after,
+  paired = TRUE,
+  alternative = c("two.sided"),
+  mu = 0
+)
+```
+
+## Testing for the Significance of the Test Statistics
+
+The p-value is 0.002201, which indicates that the probability of obtaining this sample, assuming the null hypothesis is true, is very small.
+
+## Interpreting the Test Statistics
+
+Since the p-value of 0.002201 is smaller than 0.05, we reject the null hypothesis.
+
+## Effect Size
+
+```{r}
+#| echo: true
+
+t_test_pollute <- t.test(
+  x = pollution_data$pollute_before,
+  y = pollution_data$pollute_after,
+  paired = TRUE
+)
+t_pollute <- t_test_pollute$statistic |> 
+  as.numeric()
+df_pollute <- t_test_pollute$parameter |> 
+  as.numeric()
+r_pollute <- sqrt(
+  t_pollute^2 / (t_pollute^2 + df_pollute)
+)
+d_pollute <- 2 * t_pollute / sqrt(df_pollute)
+
+print(r_pollute)
+print(d_pollute)
+```
+
+We obtained Pearson's r = .92 and Cohen's d = 4.55.
+
+## Reporting the Findings
+
+A Wilcoxon signed-rank test was conducted to determine if there was a difference in groundwater contamination levels before and after the installation of the waste removal system. The results indicated a significant difference, V = 78, p = .002201, suggesting that the contamination levels were different after the system was installed. The effect size was large, with Pearson's r = .92 and Cohen's d = 4.55, indicating a large difference between the before and after measurements.
