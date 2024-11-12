@@ -589,13 +589,14 @@ pollution_longer <- pollution_data |>
 #| label: tbl-summary-stat-pollution
 #| tbl-cap: "Summary statistics of groundwater contamination levels before and after the waste removal system installation"
 
-pollution_longer |> 
+pollution_summary <- pollution_longer |> 
   group_by(time) |> 
   summarise(
     n = n(),
     mean = mean(pollute, na.rm = TRUE),
     sd = sd(pollute, na.rm = TRUE)
-  ) |> 
+  )
+pollution_summary |> 
   kbl(
     col.names = c("Time", "n", "M", "SD")
   ) |> 
@@ -734,4 +735,4 @@ The effect size obtained was r = `r as.numeric(pollute_wilcox_effsize$effsize)`.
 
 ## Reporting the Findings
 
-A Wilcoxon signed-rank test was conducted to determine if there was a difference in groundwater contamination levels before and after the installation of the waste removal system. The results indicated a significant difference, V = `r as.numeric(pollute_wilcox_test$statistic)`, p = `r as.numeric(pollute_wilcox_test$p)`, suggesting that the contamination levels were different after the system was installed. The effect size was large, with r = `r as.numeric(pollute_wilcox_effsize$effsize)`, indicating a large difference between the before and after measurements.
+A Wilcoxon signed-rank test was conducted to determine if there was a difference in groundwater contamination levels before and after the installation of the waste removal system. The mean contamination level before the installation was 16.5 (SD = 2.07), and after installation, it was 11.5 (SD = 2.43). The results indicated a significant difference, V = `r as.numeric(pollute_wilcox_test$statistic)`, p = `r as.numeric(pollute_wilcox_test$p)`, suggesting that the contamination levels were different after the system was installed. The effect size was large, with r = `r as.numeric(pollute_wilcox_effsize$effsize)`, indicating a large difference between the before and after measurements.
