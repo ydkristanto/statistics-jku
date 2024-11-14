@@ -1,0 +1,162 @@
+---
+title: "Homework 5"
+subtitle: "Bivariate Statistics One-way ANOVA and Regression Analysis"
+date: 2024-11-14
+date-format: long
+author: 
+  - Andri Setiyawan
+  - Benedikt Meyer
+  - Yosep Dwi Kristanto
+format: pdf
+number-sections: true
+editor: visual
+execute: 
+  echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(haven)
+library(knitr)
+library(kableExtra)
+library(ggforce)
+library(ggpubr)
+library(rstatix)
+```
+
+::: {.callout-note icon="false"}
+## Problems
+
+1)  ANOVA: Launch SPSS and open the data file Telemarketing.sav
+
+    *Assume that in an attempt to maximize profits, a telemarketing company is conducting an experiment to determine which of four scripted sales pitches generates the best revenue. 1500 different telemarketing calls are randomly assigned to one of the four scripts, and the resulting revenue for each call is recorded.*
+
+    Run an appropriate ANOVA test for this research design.
+
+2)  Regression Analysis: Run a multiple regression analysis on the examrevison.sav dataset, pay particular attention to the 7 Regression diagnostics conditions. This data represents measures from students used to predict how they perform in an exam.
+:::
+
+# Telemarketing
+
+## Data Exploration
+
+```{r}
+telemarketing <- read_sav("Telemarketing.sav")
+telemarketing <- telemarketing |> 
+  mutate(
+    sales_pitch = as_factor(sales_pitch),
+    industry = as_factor(industry),
+    region = as_factor(region)
+  )
+```
+
+```{r}
+telemarketing |> 
+  drop_na() |> 
+  group_by(sales_pitch) |> 
+  summarise(
+    n = n(),
+    avg_revenue = mean(revenue),
+    sd_avenue = sd(revenue)
+  ) |> 
+  kbl() |> 
+  kable_styling()
+```
+
+```{r}
+telemarketing |> 
+  drop_na() |> 
+  ggplot(aes(
+    x = sales_pitch,
+    y = revenue
+  )) + 
+  geom_violin(
+    aes(fill = sales_pitch),
+    alpha = .3,
+    show.legend = FALSE
+  ) + 
+  geom_sina(
+    aes(col = sales_pitch),
+    maxwidth = .9,
+    size = 2,
+    alpha = .6,
+    show.legend = FALSE
+  ) + 
+  stat_summary(
+    fun.data = "mean_cl_boot",
+    geom = "crossbar"
+  ) +
+  stat_summary(
+    fun = "mean", geom = "point",
+    size = 5, col = "darkred"
+  ) +
+  scale_fill_viridis_d() + 
+  scale_color_viridis_d() + 
+  theme_minimal() + 
+  labs(
+    x = "Sales Pitch",
+    y = "Revenue"
+  )
+```
+
+## Assumption Checking
+
+-   The outcome variable, revenue, is measured on a ratio scale.
+
+-   The groups are mutually exclusive, with four distinct categories: Script A, Script B, Script C, and Script D.
+
+-   The grouping variable consists of four levels: Script A, Script B, Script C, and Script D.
+
+-   Here
+
+    ```{r}
+    telemarketing |> 
+      drop_na() |> 
+      ggqqplot(
+        x = "revenue",
+        color = "sales_pitch"
+      ) + 
+      facet_wrap(vars(sales_pitch)) + 
+      theme_minimal()
+    ```
+
+    ```{r}
+    telemarketing |> 
+      group_by(sales_pitch) |> 
+      shapiro_test(revenue) |> 
+      kbl() |> 
+      kable_styling()
+    ```
+
+    ```{r}
+    telemarketing |> 
+      levene_test(revenue ~ sales_pitch) |> 
+      kbl() |> 
+      kable_styling()
+    ```
+
+## Hypotheses
+
+$H_0$: The average `revenue` is equal across all `sales_pitch` groups.
+
+$H_1$: At least one pair of `sales_pitch` groups has a different average `revenue`.
+
+## Calculating the $F$ statistic
+
+```{r}
+telemarketing |> 
+  drop_na() |> 
+  anova_test(revenue ~ sales_pitch) |> 
+  kbl() |> 
+  kable_styling()
+```
+
+## Testing for the significance of $F$
+
+## Interpreting $F$
+
+## Reporting the findings
