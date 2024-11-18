@@ -26,6 +26,8 @@ library(kableExtra)
 library(ggforce)
 library(ggpubr)
 library(rstatix)
+library(ggstatsplot)
+library(broom)
 ```
 
 ::: {.callout-note icon="false"}
@@ -55,6 +57,9 @@ telemarketing <- telemarketing |>
 ```
 
 ```{r}
+#| label: tbl-summary-telemarketing
+#| tbl-cap: "Summary statistics of `revenue` in each `sales_pitch` in telemarketing data"
+
 telemarketing |> 
   drop_na() |> 
   group_by(sales_pitch) |> 
@@ -63,39 +68,44 @@ telemarketing |>
     avg_revenue = mean(revenue),
     sd_avenue = sd(revenue)
   ) |> 
-  kbl() |> 
+  kbl(
+    col.names = c("sales_pitch", "n", "M", "SD")
+  ) |> 
   kable_styling()
 ```
 
 ```{r}
+#| label: fig-dist-telemarketing
+#| fig-cap: "Distribution of `revenue` in each `sales_pitch` in telemarketing data"
+#| fig-asp: 0.5625
+
 telemarketing |> 
   drop_na() |> 
   ggplot(aes(
     x = sales_pitch,
     y = revenue
   )) + 
-  geom_violin(
-    aes(fill = sales_pitch),
-    alpha = .3,
-    show.legend = FALSE
-  ) + 
-  geom_sina(
-    aes(col = sales_pitch),
-    maxwidth = .9,
+  geom_point(
+    aes(color = sales_pitch),
+    show.legend = FALSE,
+    position = position_jitter(width = .1),
     size = 2,
-    alpha = .6,
+    alpha = .5
+  ) + 
+  geom_violin(
+    alpha = .3,
+    width = .6,
     show.legend = FALSE
   ) + 
-  stat_summary(
-    fun.data = "mean_cl_boot",
-    geom = "crossbar"
-  ) +
+  geom_boxplot(
+    width = .4,
+    alpha = 0
+  ) + 
   stat_summary(
     fun = "mean", geom = "point",
     size = 5, col = "darkred"
-  ) +
-  scale_fill_viridis_d() + 
-  scale_color_viridis_d() + 
+  ) + 
+  scale_color_brewer(palette = "Dark2") + 
   theme_minimal() + 
   labs(
     x = "Sales Pitch",
@@ -114,6 +124,10 @@ telemarketing |>
 -   Here
 
     ```{r}
+    #| label: fig-qq-plot-telemarketing
+    #| fig-cap: "QQ plot of `revenue` across `sales_pitch`"
+    #| fig-asp: 1
+
     telemarketing |> 
       drop_na() |> 
       ggqqplot(
@@ -121,10 +135,18 @@ telemarketing |>
         color = "sales_pitch"
       ) + 
       facet_wrap(vars(sales_pitch)) + 
-      theme_minimal()
+      scale_color_brewer(palette = "Dark2") + 
+      scale_fill_brewer(palette = "Dark2") + 
+      theme_minimal() + 
+      theme(
+        legend.position = "none"
+      )
     ```
 
     ```{r}
+    #| label: tbl-normality-test-telemarketing
+    #| tbl-cap: "Shapiro-Wilk test of normality for `revenue` across `sales_pitch`"
+
     telemarketing |> 
       group_by(sales_pitch) |> 
       shapiro_test(revenue) |> 
@@ -133,6 +155,9 @@ telemarketing |>
     ```
 
     ```{r}
+    #| label: tbl-levene-test-telemarketing
+    #| tbl-cap: "Results of Levene test for homogeneity of variance"
+
     telemarketing |> 
       levene_test(revenue ~ sales_pitch) |> 
       kbl() |> 
@@ -148,10 +173,13 @@ $H_1$: At least one pair of `sales_pitch` groups has a different average `revenu
 ## Calculating the $F$ statistic
 
 ```{r}
-telemarketing |> 
+#| label: tbl-aov-result-telemarketing
+#| tbl-cap: "ANOVA table for testing the `revenue` difference across `sales_pitch`"
+
+aov_telemarketing <- telemarketing |> 
   drop_na() |> 
-  anova_test(revenue ~ sales_pitch) |> 
-  kbl() |> 
+  anova_test(revenue ~ sales_pitch)
+aov_telemarketing |>  kbl() |> 
   kable_styling()
 ```
 
@@ -159,4 +187,196 @@ telemarketing |>
 
 ## Interpreting $F$
 
-## Reporting the findings
+## Post-hoc test
+
+```{r}
+#| label: fig-aov-post-hoc-telemarketing
+#| fig-cap: "ANOVA and post-hoc test results for telemarketing data"
+#| fig-asp: 1
+telemarketing |> 
+  ggbetweenstats(
+    x = sales_pitch,
+    y = revenue,
+    type = "parametric",
+    pairwise.display = "significant",
+    p.adjust.method = "none",
+    effsize.type = "eta",
+    bf.message = FALSE,
+    var.equal = TRUE,
+    xlab = "Sales Pitch",
+    ylab = "Revenue"
+  )
+```
+
+# Students' Performance
+
+```{r}
+exam <- read_sav("examrevision (1).sav")
+```
+
+## Data Exploration
+
+```{r}
+#| label: fig-corr-mat-exam
+#| fig-cap: "Correlation matrix among all variables in exam data"
+#| fig-asp: 0.75
+
+ggcorrmat(
+  data = exam,
+  cor.vars = score:a_points,
+  p.adjust.method = "none"
+)
+```
+
+```{r}
+#| label: tbl-models-summary-exam
+#| tbl-cap: "Results of regression analysis on `score`"
+
+# Dependent variable
+dep_var <- "score"
+
+# Independent variables
+indep_vars <- c("hours", "anxiety", "a_points")
+
+# Generate all possible combinations of independent variables (1, 2, or 3)
+all_models <- map(
+  1:length(indep_vars),
+  ~ combn(indep_vars, .x, simplify = FALSE)
+) |> 
+  unlist(recursive = FALSE)
+
+# Fit models and extract statistics
+results_model <- map_dfr(all_models, function(vars) {
+  # Build formula
+  formula <- as.formula(paste(dep_var, "~", paste(vars, collapse = " + ")))
+  
+  # Fit model
+  model <- lm(formula, data = exam)
+  
+  # Extract statistics
+  glance_summary <- glance(model)
+  
+  # Return a summary row
+  tibble(
+    dependent_variable = dep_var,
+    independent_variables = paste(vars, collapse = ", "),
+    F_statistic = glance_summary$statistic,
+    p_value = glance_summary$p.value,
+    R_squared = glance_summary$r.squared,
+    df = glance_summary$df,
+    df_res = glance_summary$df.residual
+  )
+})
+
+# Print the summary table
+results_model |> 
+  kbl() |> 
+  kable_styling()
+```
+
+## Hypotheses
+
+$H_0$: All regression coefficients are equal to zero (except the intercept).
+
+$H_1$: At least one of the regression coefficients is not equal to zero.
+
+## Assumption Checking
+
+**Correct specification of the model:** It is make sense to predict students' performance score (`score`) with how long they spent on revision (`hours`) and their A-level entry points (`a_points`).
+
+**Linearity:** @fig-linearity-exam shows relationships between `score`, `hours` and `a_points`. From the figures, we can see that the relationship between `hours`, `a_points`, and `score` are linear.
+
+```{r}
+#| label: fig-linearity-exam
+#| fig-cap: "Linearty verification"
+#| fig-subcap:
+#|   - "Relationship between `hours` and `score`"
+#|   - "Relationship between `a_points` and `score`"
+#| fig-asp: 1
+#| layout-ncol: 2
+
+exam |> 
+  ggplot(aes(x = hours, y = score)) + 
+  geom_point(
+    size = 3
+  ) + 
+  stat_ellipse(
+    level = .99
+  ) + 
+  theme_minimal()
+exam |> 
+  ggplot(aes(x = a_points, y = score)) + 
+  geom_point(
+    size = 3
+  ) + 
+  stat_ellipse(
+    level = .99
+  ) + 
+  theme_minimal()
+```
+
+**Measurement and normality of dependence variable:** The dependence variable, i.e. `score`, is ratio. From the @fig-qq-plot-score-exam, we can assume that `score` sample is from normally distributed population.
+
+```{r}
+#| label: fig-qq-plot-score-exam
+#| fig-cap: "Assessing normality for `score`"
+ggqqplot(
+  data = exam,
+  x = "score"
+) + 
+  theme_minimal()
+```
+
+**Absence of multicollinearity:** Here is the correlation coefficient between `hours` and `a_points`.
+
+```{r}
+cor(
+  exam$hours,
+  exam$a_points
+)
+```
+
+Since the correlation coefficient is less than .8, we infer that there is no multicollinearity between the independent variables.
+
+**Normal distribution of residuals:** @fig-qq-plot-resid-exam shows that the residuals are normally distributed.
+
+```{r}
+#| label: fig-qq-plot-resid-exam
+#| fig-cap: "Assessing the normality of residuals"
+#| fig-asp: 0.5625
+
+reg_model_exam <- lm(
+  score ~ hours + a_points,
+  data = exam
+)
+data_model_exam <- tibble(
+  score = exam$score,
+  fitted = reg_model_exam$fitted.values |> as.numeric(),
+  residuals = reg_model_exam$residuals |> as.numeric()
+)
+ggqqplot(
+  data = data_model_exam,
+  x = "residuals"
+) + 
+  theme_minimal()
+```
+
+**Homoscedasticity:** @fig-homo-resid-exam shows that the residuals have equal variance across dependence variable.
+
+```{r}
+#| label: fig-homo-resid-exam
+#| fig-cap: "Assessing homoscedacity of residuals"
+#| fig-asp: 0.5625
+
+data_model_exam |> 
+  ggplot(aes(x = fitted, y = residuals)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  theme_minimal()
+```
+
+## Model
+
+```{r}
+summary(reg_model_exam)
+```
