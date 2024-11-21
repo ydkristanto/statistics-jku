@@ -56,9 +56,11 @@ telemarketing <- telemarketing |>
   )
 ```
 
+@tbl-summary-telemarketing shows that average revenue and variability differ across the four sales pitches, with Script A generating the highest average revenue and Script D the lowest.
+
 ```{r}
 #| label: tbl-summary-telemarketing
-#| tbl-cap: "Summary statistics of `revenue` in each `sales_pitch` in telemarketing data"
+#| tbl-cap: "Summary statistics for `revenue` (n, mean, and standard deviation) across different `sales_pitch` in the telemarketing data"
 
 telemarketing |> 
   drop_na() |> 
@@ -74,9 +76,11 @@ telemarketing |>
   kable_styling()
 ```
 
+The distribution of `revenue` across the four `sales_pitch` (Script A, Script B, Script C, and Script D) is visually summarized using violin plots combined with boxplots, as shown in @fig-dist-telemarketing.
+
 ```{r}
 #| label: fig-dist-telemarketing
-#| fig-cap: "Distribution of `revenue` in each `sales_pitch` in telemarketing data"
+#| fig-cap: "Distribution of `revenue` across `sales_pitch` (Script A, Script B, Script C, and Script D) as illustrated by violin and boxplots."
 #| fig-asp: 0.5625
 
 telemarketing |> 
@@ -121,7 +125,7 @@ telemarketing |>
 
 -   The grouping variable consists of four levels: Script A, Script B, Script C, and Script D.
 
--   Here
+-   The QQ plots were used to assess the normality of `revenue` distributions for each `sales_pitch` (Script A, Script B, Script C, and Script D). See @fig-qq-plot-telemarketing.
 
     ```{r}
     #| label: fig-qq-plot-telemarketing
@@ -143,6 +147,8 @@ telemarketing |>
       )
     ```
 
+    From @fig-qq-plot-telemarketing, it appears that the `revenue` for each `sales_pitch` is likely drawn from a normally distributed population. This observation is supported by the Shapiro-Wilk test results presented in @tbl-normality-test-telemarketing.
+
     ```{r}
     #| label: tbl-normality-test-telemarketing
     #| tbl-cap: "Shapiro-Wilk test of normality for `revenue` across `sales_pitch`"
@@ -153,6 +159,10 @@ telemarketing |>
       kbl() |> 
       kable_styling()
     ```
+
+    The p-value in @tbl-normality-test-telemarketing is greater than .05 suggests that the `revenue` in each `sales_pitch` follows a normal distribution.
+
+-   @tbl-levene-test-telemarketing presents the results of Levene's test for homogeneity of variances of `revenue` across the different `sales_pitch` groups. Since the p-value is greater than .05, it suggests that the assumption of equal variances is met.
 
     ```{r}
     #| label: tbl-levene-test-telemarketing
@@ -172,9 +182,11 @@ $H_1$: At least one pair of `sales_pitch` groups has a different average `revenu
 
 ## Calculating the $F$ statistic
 
+The ANOVA results in @tbl-aov-result-telemarketing show an F-value of 42.505, testing the difference in average `revenue` across the `sales_pitch` groups.
+
 ```{r}
 #| label: tbl-aov-result-telemarketing
-#| tbl-cap: "ANOVA table for testing the `revenue` difference across `sales_pitch`"
+#| tbl-cap: "ANOVA table testing the difference in average `revenue` across `sales_pitch` groups."
 
 aov_telemarketing <- telemarketing |> 
   drop_na() |> 
@@ -380,3 +392,11 @@ data_model_exam |>
 ```{r}
 summary(reg_model_exam)
 ```
+
+::: {#fig-3d-model-exam layout-ncol="2"}
+![](3d_model_1.png){#fig-3d-model-exam-1}
+
+![](3d_model_2.png){#fig-3d-model-exam-2}
+
+Visualization of the 3D model
+:::

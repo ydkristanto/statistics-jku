@@ -35,3 +35,6 @@ for (i in 1:nrow(exam)) {
     col = "red"
   )
 }
+rgl.snapshot(
+  filename = "3d_model_2.png"
+)
