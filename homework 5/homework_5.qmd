@@ -1,7 +1,7 @@
 ---
 title: "Homework 5"
 subtitle: "Bivariate Statistics One-way ANOVA and Regression Analysis"
-date: 2024-11-14
+date: 2024-11-22
 date-format: long
 author: 
   - Andri Setiyawan
@@ -28,6 +28,7 @@ library(ggpubr)
 library(rstatix)
 library(ggstatsplot)
 library(broom)
+library(ggtext)
 ```
 
 ::: {.callout-note icon="false"}
@@ -197,13 +198,128 @@ aov_telemarketing |>  kbl() |>
 
 ## Testing for the significance of $F$
 
+@tbl-aov-result-telemarketing shows a p-value of `r aov_telemarketing$p |> signif(3)`, which is less than .05. A visualization of the p-value is presented in @fig-p-telemarketing.
+
+```{r}
+#| label: fig-p-telemarketing
+#| fig-cap: "Theoretical $F$-distribution with degrees of freedom 3 and 1484, illustrating the tail area corresponding to the p-value"
+#| fig-asp: 0.5625
+
+F_telemarketing <- aov_telemarketing$F |> 
+  as.numeric() |> 
+  round(2)
+ggplot(data.frame(x = c(0, 50)), aes(x)) +
+  stat_function(
+    fun = df,
+    args = list(df1 = 3, df2 = 1484),
+    linewidth = 1
+  ) + 
+  stat_function(
+    fun = df,
+    args = list(df1 = 3, df2 = 1484),
+    linewidth = 2,
+    color = "blue",
+    xlim = c(F_telemarketing, 50)
+  ) + 
+  geom_vline(
+    xintercept = F_telemarketing,
+    linetype = "dashed"
+  ) + 
+  geom_textbox(
+    x = 46,
+    y = .125,
+    label = "Tail area is too small to see",
+    maxwidth = .2
+  ) + 
+  scale_x_continuous(
+    breaks = c(
+      F_telemarketing,
+      0, 10, 20, 30, 50
+    )
+  ) + 
+  labs(
+    x = "F-value",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
 ## Interpreting $F$
+
+Assuming the null hypothesis is true, i.e., that the average `revenue` is equal across all `sales_pitch` groups, the sample yields an F-statistic of `r aov_telemarketing$F |> round(2)` and a p-value of `r aov_telemarketing$p |> signif(2)`, which is less than .05. As a result, we reject the null hypothesis, indicating that at least two groups in the `sales_pitch` have different average `revenue`.
+
+## Effect Size
+
+The generalized eta-squared (ges) from @tbl-aov-result-telemarketing of `r aov_telemarketing$ges |> round(3)` indicates that approximately `r aov_telemarketing$ges |> round(3)*100`% of the total variance in `revenue` can be attributed to differences across the `sales_pitch` groups. The value of `r aov_telemarketing$ges |> round(3)` suggests a medium effect size, indicating that group differences in `sales_pitch` explain a meaningful but not overwhelming portion of the variance in `revenue`.
 
 ## Post-hoc test
 
+@tbl-pairwise-telemarketing displays the pairwise t-test result with Bonferroni-adjusted p-values. It indicates the statistical differences between the groups. These results suggest that there are significant differences in average of `revenue` between each pair of `sales_pitch` groups, which are highlighted in the pairwise comparisons.
+
+```{r}
+#| label: tbl-pairwise-telemarketing
+#| tbl-cap: "Pairwise t-test results comparing revenue between sales_pitch groups, with Bonferroni-adjusted p-values"
+
+# Get unique combinations of groups
+sales_pitch_combn <- combn(sort(unique(telemarketing$sales_pitch)), 2, simplify = FALSE)
+
+# Perform pairwise t-tests and extract t-values
+pair_t_telemarketing <- do.call(rbind, lapply(sales_pitch_combn, function(groups) {
+  group1 <- telemarketing$revenue[telemarketing$sales_pitch == groups[1]]
+  group2 <- telemarketing$revenue[telemarketing$sales_pitch == groups[2]]
+  t_test <- t.test(group1, group2) # Perform t-test
+  
+  # Create a row of results
+  data.frame(
+    Group_1 = groups[1],
+    Group_2 = groups[2],
+    t = t_test$statistic,
+    df = t_test$parameter
+  )
+}))
+
+# Getting adjusted p-value
+pair_t_p_telemarketing <- pairwise.t.test(
+  telemarketing$revenue,
+  telemarketing$sales_pitch,
+  p.adjust.method = "bonferroni"
+)$p.value |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "Group_2") |> 
+  pivot_longer(
+    cols = `Script A`:`Script C`,
+    names_to = "Group_1",
+    values_to = "p"
+  ) |> 
+  mutate(
+    p = as.character(signif(p, 3))
+  ) |> 
+  drop_na() |> 
+  select(Group_1, Group_2, p)
+
+# Combining t and p
+pair_telemarketing <- pair_t_telemarketing |> 
+  left_join(
+    pair_t_p_telemarketing,
+    by = join_by(Group_1, Group_2)
+  ) |> tibble()
+
+# Making a table
+pair_telemarketing |> 
+  kbl(
+    col.names = c(
+      "Group 1", "Group 2",
+      "t", "df", "p (Bonferroni-adj.)"
+    )
+  ) |> 
+  kable_styling()
+```
+
+The results of the pairwise t-tests are visually represented in @fig-aov-post-hoc-telemarketing.
+
 ```{r}
 #| label: fig-aov-post-hoc-telemarketing
-#| fig-cap: "ANOVA and post-hoc test results for telemarketing data"
+#| fig-cap: "Violin plots and boxplots showing the distribution of revenue across the sales_pitch groups, with results of pairwise t-tests indicating differences between groups."
 #| fig-asp: 1
 telemarketing |> 
   ggbetweenstats(
@@ -211,7 +327,7 @@ telemarketing |>
     y = revenue,
     type = "parametric",
     pairwise.display = "significant",
-    p.adjust.method = "none",
+    p.adjust.method = "bonferroni",
     effsize.type = "eta",
     bf.message = FALSE,
     var.equal = TRUE,
@@ -220,6 +336,20 @@ telemarketing |>
   )
 ```
 
+## Reporting the Results
+
+A one-way analysis of variance (ANOVA) was conducted to examine the effect of sales pitch on revenue. The results revealed a significant difference in average revenue across the four sales pitch groups, F(3, 1484) = 42.51, p \< .001, generalized eta-squared (ges) = .079, indicating that sales pitch had a medium effect on revenue.
+
+Post-hoc comparisons were performed using pairwise t-tests with Bonferroni correction to identify specific group differences. The results indicated the following:
+
+-   The average revenue for Script A (M = 2970.63, SD = 947.23) was significantly higher than for Script B (M = 2669.13, SD = 970.92), t(602.47) = 3.92, p \< .001; Script C (M = 2471.29, SD = 967.06), t(579.28) = 6.30, p \< .001; and Script D (M = 2215.65, SD = 943.00), t(555.56) = 10.87, p \< .001.
+
+-   Similarly, Script B had significantly higher revenue than Script C, t(641.98) = 2.61, p = .0495, and Script D, t(728.91) = 6.92, p \< .001.
+
+-   Lastly, Script C had significantly higher revenue than Script D, t(613.53) = 3.74, p = .00109.
+
+These results suggest that Script A consistently led to the highest revenue, while Script D resulted in the lowest revenue among the four groups.
+
 # Students' Performance
 
 ```{r}
@@ -227,6 +357,8 @@ exam <- read_sav("examrevision (1).sav")
 ```
 
 ## Data Exploration
+
+@fig-corr-mat-exam presents the relationships between `score`, `hours`, `anxiety`, and `a_points` in the exam dataset using Pearson correlation coefficients. The strongest positive correlation is observed between `score` and `a_points` (r = 0.87), followed by the correlation between `score` and `hours` (r = 0.82). A weaker, negative correlation is found between `hours` and `anxiety` (r = -0.34), as well as between `score` and `anxiety` (r = -0.12).
 
 ```{r}
 #| label: fig-corr-mat-exam
@@ -240,9 +372,11 @@ ggcorrmat(
 )
 ```
 
+@tbl-models-summary-exam presents the results of regression analyses with `score` as the dependent variable and combinations of `hours`, `anxiety`, and `a_points` as independent variables.
+
 ```{r}
 #| label: tbl-models-summary-exam
-#| tbl-cap: "Results of regression analysis on `score`"
+#| tbl-cap: "Summary table of regression analyses for all possible combinations of independent variables (`hours`, `anxiety`, and `a_points`) predicting `score` in the `exam` dataset"
 
 # Dependent variable
 dep_var <- "score"
@@ -285,6 +419,8 @@ results_model |>
   kbl() |> 
   kable_styling()
 ```
+
+We choose `hours` and `a_points` as the independent variables for further analysis because they individually and together demonstrate strong predictive power for score. The model with these two variables accounts for 83% of the variance and has a high F-statistic, suggesting they are reliable predictors without the redundancy of including less impactful variables like `anxiety`.
 
 ## Hypotheses
 
@@ -389,14 +525,20 @@ data_model_exam |>
 
 ## Model
 
+Below is the result of a multiple regression analysis examining the relationship between `hours` and `a_points` as predictors of `score`. The regression model was statistically significant, with an F-statistic of 42.09 and a p-value of 2.604e-07, indicating that the model as a whole explains a significant portion of the variation in the dependent variable, `score`.
+
 ```{r}
 summary(reg_model_exam)
 ```
+
+The coefficient for `hours` was .4765 (t = 2.703, p = .0151), indicating that for each additional hour, the `score` is expected to increase by .4765, holding `a_points` constant. The coefficient for `a_points` was 1.9945 (t = 3.997, p = .000933), suggesting that for each additional point in `a_points`, the `score` is expected to increase by 1.9945, holding `hours` constant. The residual standard error was 4.751, and the model explained 83.2% of the variance in score (R-squared = 0.832).
+
+@fig-3d-model-exam presents the multiple regression model with `hours` and `a_points` as independent variables and `score` as the dependent variable. The surface represents the predicted score across different combinations of `hours` and `a_points`. The red line segments in the plot depict the residuals, which represent the vertical distance between the observed data points and the corresponding predicted values on the surface.
 
 ::: {#fig-3d-model-exam layout-ncol="2"}
 ![](3d_model_1.png){#fig-3d-model-exam-1}
 
 ![](3d_model_2.png){#fig-3d-model-exam-2}
 
-Visualization of the 3D model
+3D visualization of the multiple regression model examining the relationship between `hours` and `a_points` as predictors of `score`
 :::
