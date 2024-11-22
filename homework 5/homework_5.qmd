@@ -34,9 +34,11 @@ library(ggtext)
 ::: {.callout-tip icon="false"}
 # The Data Detective: Alex’s Adventures in Numbers
 
-*This story was created with the assistance of ChatGPT, and the full prompt and conversation used to develop it can be accessed at <https://chatgpt.com/share/6740a6fc-d3f8-800a-a0dd-6a22eb523458>.*
+*The following story was created with the assistance of ChatGPT, and the full prompt and conversation used to develop it can be accessed at <https://chatgpt.com/share/6740a6fc-d3f8-800a-a0dd-6a22eb523458>.*
 
 ------------------------------------------------------------------------
+
+![](alex-the-statistician.jpg){fig-alt="A classroom scene where Alex, a passionate statistician, stands at the front, gesturing towards a graph on the board. The graph showcases data, possibly related to sales or exam performance. The students are seated, engaged, and inspired by the presentation. One student in the foreground is shown taking notes with a determined expression, emphasizing the impact of Alex's teaching." fig-align="center"}
 
 Alex Martinez wasn’t your average statistician. Where others saw endless rows of numbers, Alex saw stories waiting to be told. Armed with a laptop, a passion for problem-solving, and an almost magical ability to make numbers come alive, Alex split their time between two very different worlds: a bustling sales company and a university brimming with curious students.
 
