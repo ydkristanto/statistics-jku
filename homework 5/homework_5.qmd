@@ -50,7 +50,7 @@ Alex’s first stop was the boardroom of Dynamic Sales Solutions, a company know
 
 Alex grinned. “Let’s let the data do the talking.”
 
-After hours of crunching numbers and running an analysis of variance (ANOVA), Alex gathered the team around. On the screen, a colorful bar chart appeared, with Script A towering over the rest.
+After hours of crunching numbers and running an analysis of variance (ANOVA), see @sec-telemarketing, Alex gathered the team around. On the screen, a colorful bar chart appeared, with Script A towering over the rest.
 
 “Here’s what we found,” Alex explained, pointing to the bars. “Script A—Friendly Chat—brought in the most revenue. It’s not just a little better; it’s significantly better. Scripts B and C did okay, but Script D—Casual Catch-Up—lagged behind.”
 
@@ -68,7 +68,7 @@ After a quick lunch, Alex headed to their next challenge: a university seminar w
 
 Professor Tanaka greeted Alex warmly. “Our students are curious about how their habits impact their grades. Can you help demystify it for them?”
 
-Alex nodded, pulling up a scatter plot and a 3D graph showing the results of their analysis. “We looked at two factors,” Alex began, addressing the class. “First, how many hours you spend revising each week. Second, your A-level entry points—basically, your academic background when you started here. Together, these predict your exam scores pretty well.”
+Alex nodded, pulling up a scatter plot and a 3D graph showing the results of their analysis, see @sec-students-performance. “We looked at two factors,” Alex began, addressing the class. “First, how many hours you spend revising each week. Second, your A-level entry points—basically, your academic background when you started here. Together, these predict your exam scores pretty well.”
 
 A student raised her hand. “How much do study hours really matter?”
 
@@ -92,10 +92,12 @@ As Alex packed up for the day, they reflected on how different their two clients
 
 Back at home, Alex typed up a blog post summarizing the day’s work. “Data is more than just numbers,” they wrote. “It’s a tool to understand the world, solve problems, and make better decisions. Whether you’re running a business or studying for an exam, remember: effort, curiosity, and a little data can take you a long way.”
 
+> \[Data is\] a tool to *understand the world*, *solve problems*, and *make better decisions*.
+
 The post ended with a simple but powerful message: “Hard work pays off. Numbers prove it.”
 :::
 
-# Telemarketing {.appendix}
+# Telemarketing {#sec-telemarketing .appendix}
 
 ## Data Exploration
 
@@ -402,7 +404,7 @@ Post-hoc comparisons were performed using pairwise t-tests with Bonferroni corre
 
 These results suggest that Script A consistently led to the highest revenue, while Script D resulted in the lowest revenue among the four groups.
 
-# Students' Performance {.appendix}
+# Students' Performance {#sec-students-performance .appendix}
 
 ```{r}
 exam <- read_sav("examrevision (1).sav")
