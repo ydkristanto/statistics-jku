@@ -1,7 +1,7 @@
 ---
 title: "Homework 5"
 subtitle: "Bivariate Statistics One-way ANOVA and Regression Analysis"
-date: 2024-11-22
+date: 2024-12-03
 date-format: long
 author: 
   - Andri Setiyawan
@@ -29,6 +29,7 @@ library(rstatix)
 library(ggstatsplot)
 library(broom)
 library(ggtext)
+library(car)
 ```
 
 ::: {.callout-tip icon="false"}
@@ -577,6 +578,43 @@ data_model_exam |>
   geom_point() + 
   geom_hline(yintercept = 0) + 
   theme_minimal()
+```
+
+**Independence of residuals:** We use the Durbin-Watson test to assess whether the residuals of the model are independent. The results are as follows.
+
+```{r}
+durbinWatsonTest(reg_model_exam)
+```
+
+The Durbin-Watson test yielded a statistic of 3.22 (p = .002) and a lag-1 autocorrelation of -.617, indicating significant negative autocorrelation in the residuals. This suggests the assumption of independent residuals is violated. However, given that the data is not time-series and the autocorrelation is relatively mild, we will proceed with the regression analysis.
+
+**Outlier detection:** @fig-cooks-dist-exam displays the Cook's distance plot, which is used to assess influential data points. No points had a Cook's distance greater than 1, indicating that all observations exerted minimal influence on the regression model, suggesting that the results are stable and not unduly affected by any single data point.
+
+```{r}
+#| label: fig-cooks-dist-exam
+#| fig-cap: "Plot of Cook's distance for each observation in the regression model. The dashed line represents a threshold of Cook's distance = 1, above which data points may be considered influential and potentially affect the regression results."
+#| fig-asp: 0.5625
+
+cooks_dist_exam <- cooks.distance(reg_model_exam)
+cooks_df_exam <- tibble(
+  index = seq_along(cooks_dist_exam),
+  cook_distance = cooks_dist_exam
+)
+cooks_df_exam |> 
+  ggplot(aes(x = index, y = cook_distance)) + 
+  geom_point(
+    aes(col = cook_distance),
+    size = 3,
+    show.legend = FALSE
+  ) + 
+  geom_hline(yintercept = 1) + 
+  scale_y_continuous(limits = c(0, 1.5)) + 
+  scale_color_viridis_c() + 
+  theme_minimal() + 
+  labs(
+    x = "Index",
+    y = "Cook's distance"
+  )
 ```
 
 ## Model
